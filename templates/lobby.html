@@ -14,11 +14,11 @@
 
         <div class="mode-grid">
             {% for mode_id, mode in game_modes.items() %}
-            <div class="mode-card" data-mode="{{ mode_id }}">
+            <div class="mode-powerup" data-mode="{{ mode_id }}">
                 <div class="mode-icon">
                     {% if mode_id == 'classic' %}♟{% endif %}
                     {% if mode_id == 'dice' %}🎲{% endif %}
-                    {% if mode_id == 'cards' %}🃏{% endif %}
+                    {% if mode_id == 'powerup' %}🃏{% endif %}
                     {% if mode_id == 'super' %}⚡{% endif %}
                 </div>
                 <h2>{{ mode.name }}</h2>
@@ -27,10 +27,10 @@
                     {% if mode.uses_dice %}
                     <span class="feature">🎲 Dice</span>
                     {% endif %}
-                    {% if mode.uses_cards %}
-                    <span class="feature">🃏 Cards</span>
+                    {% if mode.uses_powerups %}
+                    <span class="feature">⚡ Power-Ups</span>
                     {% endif %}
-                    {% if not mode.uses_dice and not mode.uses_cards %}
+                    {% if not mode.uses_dice and not mode.uses_powerups and not mode.uses_powerups %}
                     <span class="feature">📜 Standard Rules</span>
                     {% endif %}
                 </div>

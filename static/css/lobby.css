@@ -1,3 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Lato:wght@400;700&display=swap');
+
+* { box-sizing: border-box; }
+
 .lobby-container {
     max-width: 900px;
     margin: 0 auto;
@@ -87,15 +91,17 @@
     background: #2980b9;
 }
 
-/* Different accent colors per mode */
+.play-btn:hover { filter: brightness(1.15); }
+.play-btn:active { transform: scale(0.97); }
+
 .mode-card[data-mode="classic"] .play-btn { background: #27ae60; }
 .mode-card[data-mode="classic"] .play-btn:hover { background: #219a52; }
 
 .mode-card[data-mode="dice"] .play-btn { background: #e74c3c; }
 .mode-card[data-mode="dice"] .play-btn:hover { background: #c0392b; }
 
-.mode-card[data-mode="cards"] .play-btn { background: #9b59b6; }
-.mode-card[data-mode="cards"] .play-btn:hover { background: #8e44ad; }
+.mode-card[data-mode="powerup"] .play-btn { background: #9b59b6; }
+.mode-card[data-mode="powerup"] .play-btn:hover { background: #8e44ad; }
 
 .mode-card[data-mode="super"] .play-btn { background: #f39c12; }
 .mode-card[data-mode="super"] .play-btn:hover { background: #d68910; }

@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+<style>
+    h1 {text-align: center;}
+    div {text-align: center;}
+</style>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,10 +17,23 @@
         <div id="mode-badge"></div>
     </div>
     <div id="status">Turn: white | Status: active</div>
-    <div id="board" class="chessboard"></div>
+
+    <!-- Powerup pending banner -->
+    <div id="pu-banner" style="display:none"></div>
+
+    <div class="game-layout">
+        <!-- Left: power-up hand for white -->
+        <div id="powerup-panel" class="powerup-panel" style="display:none">
+            <div class="pu-panel-title">⚡ Power-Ups</div>
+            <div class="pu-turn-label" id="pu-turn-label"></div>
+            <div id="pu-hand"></div>
+        </div>
+
+        <!-- Center: board -->
+        <div id="board" class="chessboard"></div>
+    </div>
 
     <script>
-        // Pass game_id to JavaScript
         const GAME_ID = "{{ game_id }}";
     </script>
     <script src="/static/js/main.js"></script>
