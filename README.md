@@ -17,9 +17,9 @@ A chess web app built as a University project at Providence University.
 ## Checkpoints
 - [x] Checkpoint 1 — board renders, game state API working
 - [x] Checkpoint 2 — click to move, local 2-player classic chess
-- [ ] Checkpoint 3 — lobby with game mode selection
+- [x] Checkpoint 3 — lobby with game mode selection
 - [ ] Checkpoint 4 — dice roll mode
-- [ ] Checkpoint 5 — power-up card mode
+- [x] Checkpoint 5 — power-up card mode
 - [ ] Checkpoint 6 — online multiplayer
 - [ ] Checkpoint 7 — AI opponent
 - Deadline 25 may presentation
