@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperChess - Lobby</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/lobby.css">
+</head>
+<body>
+    <div class="lobby-container">
+        <h1>♔ SuperChess ♚</h1>
+        <p class="subtitle">Choose your game mode</p>
+
+        <div class="mode-grid">
+            {% for mode_id, mode in game_modes.items() %}
+            <div class="mode-powerup" data-mode="{{ mode_id }}">
+                <div class="mode-icon">
+                    {% if mode_id == 'classic' %}♟{% endif %}
+                    {% if mode_id == 'dice' %}🎲{% endif %}
+                    {% if mode_id == 'powerup' %}🃏{% endif %}
+                    {% if mode_id == 'super' %}⚡{% endif %}
+                </div>
+                <h2>{{ mode.name }}</h2>
+                <p>{{ mode.description }}</p>
+                <div class="mode-features">
+                    {% if mode.uses_dice %}
+                    <span class="feature">🎲 Dice</span>
+                    {% endif %}
+                    {% if mode.uses_powerups %}
+                    <span class="feature">⚡ Power-Ups</span>
+                    {% endif %}
+                    {% if not mode.uses_dice and not mode.uses_powerups and not mode.uses_powerups %}
+                    <span class="feature">📜 Standard Rules</span>
+                    {% endif %}
+                </div>
+                <form action="/create-game" method="POST">
+                    <input type="hidden" name="mode" value="{{ mode_id }}">
+                    <label style="display:block;margin-bottom:10px;font-size:0.9rem;cursor:pointer">
+                        <input type="checkbox" name="online" value="1"> 🌐 Play on 2 devices
+                    </label>
+                    <button type="submit" class="play-btn">Play</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

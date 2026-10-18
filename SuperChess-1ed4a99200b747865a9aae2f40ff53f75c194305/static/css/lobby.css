@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Lato:wght@400;700&display=swap');
+
+* { box-sizing: border-box; }
+
+.lobby-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.lobby-container h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.subtitle {
+    color: #7f8c8d;
+    font-size: 1.2rem;
+    margin-bottom: 40px;
+}
+
+.mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.mode-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.mode-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.mode-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+.mode-card h2 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+}
+
+.mode-card p {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+.mode-features {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.feature {
+    background: #ecf0f1;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: #34495e;
+}
+
+.play-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.play-btn:hover {
+    background: #2980b9;
+}
+
+.play-btn:hover { filter: brightness(1.15); }
+.play-btn:active { transform: scale(0.97); }
+
+.mode-card[data-mode="classic"] .play-btn { background: #27ae60; }
+.mode-card[data-mode="classic"] .play-btn:hover { background: #219a52; }
+
+.mode-card[data-mode="dice"] .play-btn { background: #e74c3c; }
+.mode-card[data-mode="dice"] .play-btn:hover { background: #c0392b; }
+
+.mode-card[data-mode="powerup"] .play-btn { background: #9b59b6; }
+.mode-card[data-mode="powerup"] .play-btn:hover { background: #8e44ad; }
+
+.mode-card[data-mode="super"] .play-btn { background: #f39c12; }
+.mode-card[data-mode="super"] .play-btn:hover { background: #d68910; }
