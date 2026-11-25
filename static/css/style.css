@@ -2,6 +2,33 @@
 
 * { box-sizing: border-box; }
 
+#join-box {
+    text-align: center;
+    padding: 10px;
+    background: rgba(52,152,219,0.2);
+    border-bottom: 1px solid #3498db;
+    font-size: 0.9rem;
+    color: #ddd;
+}
+#join-box code {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 10px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    color: #74d7ff;
+    user-select: all;
+}
+#qr-img {
+    display: block;
+    margin: 12px auto 4px;
+    width: 180px;
+    height: 180px;
+    padding: 10px;
+    background: #fff;   /* scanners need a light background */
+    border-radius: 8px;
+}
+
 .back-btn {
     position: absolute;
     left: 20px;
@@ -35,6 +62,16 @@
 .status-check { color: #e67e22 !important; }
 .status-checkmate { color: #e74c3c !important; font-weight: 700; }
 .status-special { color: #f39c12; font-weight: 700; }
+
+/* ── Dice box ── */
+#dice-box {
+    text-align: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.18);
+    border-bottom: 1px solid #e74c3c;
+    color: #ff0000;
+    font-size: 0.95rem;
+}
 
 /* ── Pending power-up banner ── */
 
@@ -200,6 +237,27 @@
     0%, 100% { box-shadow: 0 0 8px rgba(243,156,18,0.5); }
     50%       { box-shadow: 0 0 20px rgba(243,156,18,0.9); }
 }
+
+/* ── Dice face display ── */
+.dice-face {
+    display: inline-block;
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    margin-right: 8px;
+    background: #fff;
+    color: #1a1a2e;
+    font-weight: 700;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.dice-face.rolling { animation: diceRoll 0.6s ease-out; }
+@keyframes diceRoll {
+    0%   { transform: rotate(0) scale(0.6); }
+    60%  { transform: rotate(540deg) scale(1.2); }
+    100% { transform: rotate(720deg) scale(1); }
+}
+.dice-note { font-size: 0.8rem; color: #aaa; margin-left: 8px; }
 
 /* ── Floating notification ── */
 .pu-notification {

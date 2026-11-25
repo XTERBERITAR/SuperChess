@@ -17,6 +17,17 @@
         <div id="mode-badge"></div>
     </div>
     <div id="status">Turn: white | Status: active</div>
+    <div id="status">Turn: white | Status: active</div>
+    <div id="dice-box" style="display:none"></div>
+
+    <div id="join-box" style="display:none">
+    📱 Scan with your phone, or send this link (same Wi-Fi):
+    <code>{{ join_url }}</code>
+    <div>
+        <img id="qr-img" src="/qr/{{ game_id }}.svg" alt="QR code to join this game">
+    </div>
+    </div>
+
 
     <!-- Powerup pending banner -->
     <div id="pu-banner" style="display:none"></div>

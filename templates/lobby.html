@@ -13,6 +13,36 @@
         <p class="subtitle">Choose your game mode</p>
 
         <div class="mode-grid">
+            <div class="join-panel">
+                <h2>Join a game</h2>
+                <form action="/join" method="GET">
+                    <input name="code" placeholder="Game code" maxlength="8" required>
+                    <button type="submit">Join</button>
+                </form>
+                <h3>Open games</h3>
+                <div id="open-games">Loading…</div>
+            </div>
+
+            <script>
+            async function loadOpenGames() {
+                try {
+                    const res = await fetch('/api/open-games');
+                    const list = await res.json();
+                    const el = document.getElementById('open-games');
+                    if (!list.length) { el.textContent = 'No open games right now.'; return; }
+                    el.innerHTML = '';
+                    list.forEach(g => {
+                        const a = document.createElement('a');
+                        a.href = '/game/' + g.id;
+                        a.className = 'open-game';
+                        a.textContent = `${g.mode} · ${g.id} · ${Math.floor(g.age / 60)} min ago`;
+                        el.appendChild(a);
+                    });
+                } catch (e) { /* ignore */ }
+            }
+            loadOpenGames();
+            setInterval(loadOpenGames, 3000);
+            </script>
             {% for mode_id, mode in game_modes.items() %}
             <div class="mode-powerup" data-mode="{{ mode_id }}">
                 <div class="mode-icon">
@@ -36,6 +66,10 @@
                 </div>
                 <form action="/create-game" method="POST">
                     <input type="hidden" name="mode" value="{{ mode_id }}">
+                    <label style="display:block;margin-bottom:10px;font-size:0.9rem;cursor:pointer">
+                        <input type="checkbox" name="online" value="1"> 🌐 Play on 2 devices
+                        <input type="checkbox" name="public" value="1"> 📢 List in open games
+                    </label>
                     <button type="submit" class="play-btn">Play</button>
                 </form>
             </div>

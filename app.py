@@ -1,12 +1,81 @@
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, Response, g
+from werkzeug.middleware.proxy_fix import ProxyFix
+import os
+import time
+import threading
 import chess
 import uuid
 import random
+import socket
+import io
+import qrcode
+import qrcode.image.svg
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-in-production'
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
+# Correct scheme/host when running behind a proxy or tunnel (Render, Cloudflare, etc.)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 games = {}
+
+def get_lan_ip():
+    """Best-guess LAN IP so the other device can connect."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+def get_player_id():
+    if "pid" not in session:
+        session["pid"] = uuid.uuid4().hex
+    return session["pid"]
+
+
+def claim_seat(game):
+    """Assign this browser a seat (called when the game page loads)."""
+    if not game["online"]:
+        return "both"
+    pid = get_player_id()
+    p = game["players"]
+    if p["white"] == pid:
+        return "white"
+    if p["black"] == pid:
+        return "black"
+    if p["white"] is None:
+        p["white"] = pid
+        return "white"
+    if p["black"] is None:
+        p["black"] = pid
+        return "black"
+    return "spectator"
+
+
+def my_color(game):
+    """Look up this browser's seat without claiming one."""
+    if not game["online"]:
+        return "both"
+    pid = session.get("pid")
+    if pid and game["players"]["white"] == pid:
+        return "white"
+    if pid and game["players"]["black"] == pid:
+        return "black"
+    return "spectator"
+
+
+def check_turn(game):
+    """Returns an error response if this player may not act right now."""
+    if not game["online"]:
+        return None
+    if game["players"]["black"] is None:
+        return jsonify({"error": "Waiting for opponent to join"}), 403
+    if my_color(game) != game["turn"]:
+        return jsonify({"error": "It's not your turn"}), 403
+    return None
 
 # ─── Power-up definitions ───────────────────────────────────────────────────
 POWERUPS = {
@@ -49,6 +118,15 @@ POWERUPS = {
 
 POWERUP_KEYS = list(POWERUPS.keys())
 
+DICE_FACES = {
+    1: {"piece_type": chess.PAWN,   "name": "Pawn",   "icon": "♟"},
+    2: {"piece_type": chess.KNIGHT, "name": "Knight", "icon": "♞"},
+    3: {"piece_type": chess.BISHOP, "name": "Bishop", "icon": "♝"},
+    4: {"piece_type": chess.ROOK,   "name": "Rook",   "icon": "♜"},
+    5: {"piece_type": chess.QUEEN,  "name": "Queen",  "icon": "♛"},
+    6: {"piece_type": chess.KING,   "name": "King",   "icon": "♚"},
+}
+
 GAME_MODES = {
     "classic": {
         "name": "Classic Chess",
@@ -77,10 +155,14 @@ GAME_MODES = {
 }
 
 
-def create_game(mode="classic"):
+def create_game(mode="classic", online=False, public=False):
     game_id = str(uuid.uuid4())[:8]
     board = chess.Board()
     games[game_id] = {
+        "online": online,
+        "public": public,
+        "created": time.time(),
+        "last_active": time.time(),
         "board_obj": board,
         "board": board.fen(),
         "turn": "white",
@@ -101,6 +183,7 @@ def create_game(mode="classic"):
         "pending_powerup": None,   # {"type": ..., "player": ..., "stage": ...}
         "last_event": None,        # for frontend notifications
     }
+    roll_dice(games[game_id])   # <-- new: white's first roll
     return game_id
 
 
@@ -128,8 +211,88 @@ def tick_effects(game):
     for sq in game["shielded_squares"]:
         game["shielded_squares"][sq] -= 1
 
+def uses_dice(game):
+    return GAME_MODES[game["mode"]].get("uses_dice", False)
+
+
+def playable_moves(game):
+    """Legal moves, minus frozen pieces and captures of shielded pieces."""
+    board = game["board_obj"]
+    moves = []
+    for m in board.legal_moves:
+        if chess.SQUARE_NAMES[m.from_square] in game["frozen_squares"]:
+            continue
+        if chess.SQUARE_NAMES[m.to_square] in game["shielded_squares"]:
+            continue
+        moves.append(m)
+    return moves
+
+
+def roll_dice(game):
+    """Roll for the current player. Re-rolls until the piece type can actually move."""
+    if not uses_dice(game):
+        return
+    board = game["board_obj"]
+    available = {board.piece_type_at(m.from_square) for m in playable_moves(game)}
+    if not available:
+        game["dice_roll"] = None
+        return
+
+    rerolls = 0
+    while True:
+        value = random.randint(1, 6)
+        if DICE_FACES[value]["piece_type"] in available:
+            break
+        rerolls += 1
+
+    face = DICE_FACES[value]
+    game["dice_roll"] = {
+        "value": value,
+        "piece": face["name"],
+        "icon": face["icon"],
+        "rerolls": rerolls,
+    }
+
+
+def ensure_dice_valid(game):
+    """After a power-up changes the board, re-roll if the current roll became unplayable."""
+    if not uses_dice(game):
+        return
+    roll = game["dice_roll"]
+    if roll is None:
+        roll_dice(game)
+        return
+    pt = DICE_FACES[roll["value"]]["piece_type"]
+    board = game["board_obj"]
+    if not any(board.piece_type_at(m.from_square) == pt for m in playable_moves(game)):
+        roll_dice(game)
 
 # ─── Routes ─────────────────────────────────────────────────────────────────
+
+games_lock = threading.RLock()
+
+@app.before_request
+def _before():
+    if request.path.startswith('/api/'):
+        games_lock.acquire()
+        g.locked = True
+    gid = (request.view_args or {}).get('game_id')
+    if gid in games:
+        games[gid]["last_active"] = time.time()
+
+@app.teardown_request
+def _after(exc):
+    if g.pop('locked', False):
+        games_lock.release()
+def cleanup_loop():
+    while True:
+        time.sleep(300)
+        cutoff = time.time() - 2 * 3600
+        for gid, gm in list(games.items()):
+            if gm["last_active"] < cutoff:
+                games.pop(gid, None)
+
+threading.Thread(target=cleanup_loop, daemon=True).start()
 
 @app.route('/')
 def lobby():
@@ -141,15 +304,42 @@ def create_game_route():
     mode = request.form.get('mode', 'classic')
     if mode not in GAME_MODES:
         mode = 'classic'
-    game_id = create_game(mode)
+    online = request.form.get('online') == '1'
+    public = online and request.form.get('public') == '1'
+    game_id = create_game(mode, online, public)
     return redirect(url_for('game', game_id=game_id))
 
+def build_join_url(game_id):
+    public = os.environ.get("PUBLIC_URL")        # optional manual override
+    if public:
+        return f"{public.rstrip('/')}/game/{game_id}"
+    host = request.host
+    name, _, port = host.partition(':')
+    if name in ("localhost", "127.0.0.1"):       # other devices can't use these
+        host = get_lan_ip() + (f":{port}" if port else "")
+    return f"{request.scheme}://{host}/game/{game_id}"
 
 @app.route('/game/<game_id>')
 def game(game_id):
     if game_id not in games:
         return redirect(url_for('lobby'))
-    return render_template('index.html', game_id=game_id)
+    claim_seat(games[game_id])
+    return render_template('index.html', game_id=game_id, join_url=build_join_url(game_id))
+
+
+@app.route('/qr/<game_id>.svg')
+def qr_code(game_id):
+    if game_id not in games:
+        return "Game not found", 404
+    img = qrcode.make(
+        build_join_url(game_id),
+        image_factory=qrcode.image.svg.SvgPathImage,
+        box_size=10,
+        border=2,
+    )
+    buf = io.BytesIO()
+    img.save(buf)
+    return Response(buf.getvalue(), mimetype="image/svg+xml")
 
 
 @app.route('/api/modes')
@@ -161,7 +351,13 @@ def get_modes():
 def get_state(game_id):
     if game_id not in games:
         return jsonify({"error": "Game not found"}), 404
+    return jsonify(_full_state(games[game_id]))
+    
     game = games[game_id]
+    # make_move, activate_powerup, resolve_powerup, cancel_powerup:
+    err = check_turn(game)
+    if err:
+        return err
     return jsonify({
         "board": game["board"],
         "turn": game["turn"],
@@ -186,6 +382,10 @@ def get_legal_moves(game_id):
     if game_id not in games:
         return jsonify([])
     game = games[game_id]
+
+    if game.get("online") and (game["players"]["black"] is None or my_color(game) != game["turn"]):
+        return jsonify([])
+
     board = game["board_obj"]
     square_name = request.args.get('square')
     if not square_name:
@@ -198,23 +398,18 @@ def get_legal_moves(game_id):
 
     piece = board.piece_at(from_square)
     current_turn_color = chess.WHITE if game["turn"] == "white" else chess.BLACK
-
     if not piece or piece.color != current_turn_color:
         return jsonify([])
 
-    # Frozen pieces can't move
-    if square_name in game["frozen_squares"]:
-        return jsonify([])
+    # Dice: only the rolled piece type may move
+    if uses_dice(game):
+        roll = game["dice_roll"]
+        if roll is None or piece.piece_type != DICE_FACES[roll["value"]]["piece_type"]:
+            return jsonify([])
 
-    moves = []
-    for m in board.legal_moves:
-        if m.from_square == from_square:
-            dest = chess.SQUARE_NAMES[m.to_square]
-            # Can't capture shielded pieces (unless it's the pending_powerup bomb action)
-            if dest in game["shielded_squares"]:
-                continue
-            moves.append(dest)
-
+    moves = [chess.SQUARE_NAMES[m.to_square]
+             for m in playable_moves(game)
+             if m.from_square == from_square]
     return jsonify(moves)
 
 
@@ -222,7 +417,10 @@ def get_legal_moves(game_id):
 def make_move(game_id):
     if game_id not in games:
         return jsonify({"error": "Game not found"}), 404
-    game = games[game_id]
+    game = games[game_id]           # 1. define game first
+    err = check_turn(game)          # 2. then check the turn
+    if err:
+        return err
     board = game["board_obj"]
     data = request.json
     move_uci = f"{data.get('from')}{data.get('to')}"
@@ -242,7 +440,15 @@ def make_move(game_id):
 
     if move not in board.legal_moves:
         return jsonify({"error": "Illegal move"}), 400
+    if uses_dice(game):
+        roll = game["dice_roll"]
 
+    if roll is None or piece.piece_type != DICE_FACES[roll["value"]]["piece_type"]:
+        need = roll["piece"] if roll else "?"
+        return jsonify({"error": f"You rolled a {need}. Move a {need}."}), 400
+    
+    if chess.SQUARE_NAMES[move.from_square] in game["frozen_squares"]:
+        return jsonify({"error": "This piece is frozen and cannot move"}), 400
     # Track captured piece
     captured = board.piece_at(move.to_square)
     if captured:
@@ -279,6 +485,7 @@ def make_move(game_id):
             game["last_event"] = {"type": "powerup_awarded", "player": current_player, "powerup": awarded}
 
     _update_status(game, board)
+    roll_dice(game)                      # <-- new: next player's roll
     return jsonify(_full_state(game))
 
 
@@ -289,6 +496,9 @@ def activate_powerup(game_id):
     if game_id not in games:
         return jsonify({"error": "Game not found"}), 404
     game = games[game_id]
+    err = check_turn(game)
+    if err:
+        return err
     data = request.json
     player = game["turn"]
     pu_id = data.get("powerup_id")
@@ -341,6 +551,9 @@ def resolve_powerup(game_id):
     if game_id not in games:
         return jsonify({"error": "Game not found"}), 404
     game = games[game_id]
+    err = check_turn(game)
+    if err:
+        return err
     data = request.json
     pending = game["pending_powerup"]
     if not pending:
@@ -429,6 +642,9 @@ def cancel_powerup(game_id):
     if game_id not in games:
         return jsonify({"error": "Game not found"}), 404
     game = games[game_id]
+    err = check_turn(game)
+    if err:
+        return err
     game["pending_powerup"] = None
     game["last_event"] = None
     return jsonify(_full_state(game))
@@ -466,8 +682,33 @@ def _full_state(game):
         "last_event": game["last_event"],
         "powerup_defs": POWERUPS,
         "captured_pieces": game["captured_pieces"],
+        "online": game["online"],
+        "my_color": my_color(game),
+        "opponent_joined": (not game["online"]) or game["players"]["black"] is not None,
     }
 
+@app.route('/join')
+def join_by_code():
+    code = request.args.get('code', '').strip().lower()
+    if code in games:
+        return redirect(url_for('game', game_id=code))
+    return redirect(url_for('lobby'))
+
+
+@app.route('/api/open-games')
+def open_games():
+    out = []
+    for gid, gm in list(games.items()):
+        if (gm["online"] and gm.get("public")
+                and gm["players"]["white"] is not None
+                and gm["players"]["black"] is None):
+            out.append({
+                "id": gid,
+                "mode": GAME_MODES[gm["mode"]]["name"],
+                "age": int(time.time() - gm["created"]),
+            })
+    return jsonify(out)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    print(f"\n  Other devices on your network: https://{get_lan_ip()}:5001\n")
+    app.run(host="0.0.0.0", port=5001, debug=True, use_debugger=False, ssl_context=("192.168.1.23+2.pem", "192.168.1.23+2-key.pem"))
