@@ -43,7 +43,17 @@
         <!-- Center: board -->
         <div id="board" class="chessboard"></div>
     </div>
-
+    <div id="gameover" class="gameover" style="display:none">
+        <div class="gameover-card">
+            <div id="go-icon" class="go-icon"></div>
+            <h2 id="go-title"></h2>
+            <p id="go-sub"></p>
+            <div class="go-buttons">
+                <button id="go-view" type="button">View board</button>
+                <a href="/" class="go-lobby">Back to lobby</a>
+            </div>
+        </div>
+    </div>
     <script>
         const GAME_ID = "{{ game_id }}";
     </script>

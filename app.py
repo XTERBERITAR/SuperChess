@@ -421,6 +421,8 @@ def make_move(game_id):
     err = check_turn(game)          # 2. then check the turn
     if err:
         return err
+    if game_over(game):
+        return jsonify({"error": "The game is over"}), 400
     board = game["board_obj"]
     data = request.json
     move_uci = f"{data.get('from')}{data.get('to')}"
@@ -442,10 +444,9 @@ def make_move(game_id):
         return jsonify({"error": "Illegal move"}), 400
     if uses_dice(game):
         roll = game["dice_roll"]
-
-    if roll is None or piece.piece_type != DICE_FACES[roll["value"]]["piece_type"]:
-        need = roll["piece"] if roll else "?"
-        return jsonify({"error": f"You rolled a {need}. Move a {need}."}), 400
+        if roll is None or piece.piece_type != DICE_FACES[roll["value"]]["piece_type"]:
+            need = roll["piece"] if roll else "?"
+            return jsonify({"error": f"You rolled a {need}. Move a {need}."}), 400
     
     if chess.SQUARE_NAMES[move.from_square] in game["frozen_squares"]:
         return jsonify({"error": "This piece is frozen and cannot move"}), 400
@@ -487,6 +488,7 @@ def make_move(game_id):
     _update_status(game, board)
     roll_dice(game)                      # <-- new: next player's roll
     return jsonify(_full_state(game))
+
 
 
 # ─── Power-up activation ────────────────────────────────────────────────────
@@ -662,6 +664,9 @@ def _update_status(game, board):
         game["status"] = "check"
     else:
         game["status"] = "active"
+
+def game_over(game):
+    return game["status"].startswith("checkmate") or game["status"] == "draw"
 
 
 def _full_state(game):
