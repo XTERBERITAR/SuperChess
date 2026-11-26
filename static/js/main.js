@@ -4,6 +4,7 @@ let gameState = null;
 let lastSnapshot = '';
 let lastEventKey = null;
 let lastDiceKey = null;
+let gameOverDismissed = false;
 
 const gameId = typeof GAME_ID !== 'undefined' ? GAME_ID : null;
 
@@ -85,6 +86,7 @@ function applyState(state) {
     lastSnapshot = JSON.stringify(state);
     updateStatus(state);
     renderDice(state);
+    renderGameOver(state);      // <-- new
     renderBoard(state.board, state);
     renderPowerupPanel(state);
     handleLastEvent(state);
@@ -118,6 +120,61 @@ function renderDice(state) {
     `;
     box.style.display = 'block';
 }
+
+// ================= GAME OVER =================
+
+function renderGameOver(state) {
+    const overlay = document.getElementById('gameover');
+    if (!overlay) return;
+
+    const isMate = state.status.includes('checkmate');
+    const isDraw = state.status === 'draw';
+
+    if (!isMate && !isDraw) {          // game is running (or a new game)
+        gameOverDismissed = false;
+        overlay.style.display = 'none';
+        return;
+    }
+    if (gameOverDismissed) return;
+
+    const card = overlay.querySelector('.gameover-card');
+    const icon = document.getElementById('go-icon');
+    const title = document.getElementById('go-title');
+    const sub = document.getElementById('go-sub');
+    card.classList.remove('lost', 'draw');
+
+    if (isDraw) {
+        card.classList.add('draw');
+        icon.textContent = '🤝';
+        title.textContent = 'Draw';
+        sub.textContent = 'Nobody wins this time.';
+    } else {
+        const winner = state.status.includes('white wins') ? 'white' : 'black';
+        const cap = winner.charAt(0).toUpperCase() + winner.slice(1);
+        const players = state.online && state.my_color !== 'spectator';
+
+        if (players && state.my_color === winner) {
+            icon.textContent = '🏆';
+            title.textContent = 'You win!';
+            sub.textContent = `Checkmate. Well played as ${winner}.`;
+        } else if (players) {
+            card.classList.add('lost');
+            icon.textContent = '💀';
+            title.textContent = 'You lost';
+            sub.textContent = `Checkmate. ${cap} wins.`;
+        } else {
+            icon.textContent = '🏆';
+            title.textContent = `${cap} wins!`;
+            sub.textContent = 'Checkmate.';
+        }
+    }
+    overlay.style.display = 'flex';
+}
+
+document.getElementById('go-view')?.addEventListener('click', () => {
+    gameOverDismissed = true;
+    document.getElementById('gameover').style.display = 'none';
+});
 
 // ================= STATUS =================
 

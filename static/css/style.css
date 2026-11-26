@@ -73,6 +73,49 @@
     font-size: 0.95rem;
 }
 
+/* ── Game over screen ── */
+.gameover {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gameover-card {
+    background: #1a1a2e;
+    border: 2px solid #f39c12;
+    border-radius: 16px;
+    padding: 36px 48px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+    animation: goPop 0.45s ease-out;
+}
+.gameover-card.lost { border-color: #e74c3c; }
+.gameover-card.draw { border-color: #95a5a6; }
+.go-icon { font-size: 4.5rem; margin-bottom: 8px; }
+.gameover-card h2 { margin: 0 0 8px; font-size: 2rem; }
+.gameover-card p { margin: 0 0 24px; color: #bbb; }
+.go-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.go-buttons button,
+.go-lobby {
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+}
+.go-buttons button { background: #34495e; color: #fff; }
+.go-lobby { background: #f39c12; color: #1a1a2e; font-weight: 700; }
+.go-buttons button:hover, .go-lobby:hover { filter: brightness(1.15); }
+@keyframes goPop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
 /* ── Pending power-up banner ── */
 
 @keyframes pulseBanner {
