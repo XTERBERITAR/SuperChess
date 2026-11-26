@@ -2,3 +2,4 @@ Flask
 python-chess
 qrcode
 waitress
+gunicorn
