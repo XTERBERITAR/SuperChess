@@ -715,5 +715,9 @@ def open_games():
     return jsonify(out)
 
 if __name__ == '__main__':
-    print(f"\n  Other devices on your network: https://{get_lan_ip()}:5001\n")
-    app.run(host="0.0.0.0", port=5001, debug=True, use_debugger=False, ssl_context=("192.168.1.23+2.pem", "192.168.1.23+2-key.pem"))
+    port = int(os.environ.get("PORT", 5001))
+    cert, key = "192.168.1.23+2.pem", "192.168.1.23+2-key.pem"
+    ssl_ctx = (cert, key) if os.path.exists(cert) and os.path.exists(key) else None
+    scheme = "https" if ssl_ctx else "http"
+    print(f"\n  Other devices on your network: {scheme}://{get_lan_ip()}:{port}\n")
+    app.run(host="0.0.0.0", port=port, debug=False, use_debugger=False, ssl_context=ssl_ctx)
